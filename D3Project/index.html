@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Datasaurus Dozen Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: sans-serif;
+        }
+        svg {
+            margin: 20px;
+        }
+        .chart-title {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .line-chart-container {
+            display: flex; /* For side-by-side line charts */
+        }
+        .line-chart {
+            width: 48%; /* Slightly less for spacing */
+            height: 400px;
+            border: 1px solid #ccc; /* Add a border */
+        }
+        .tooltip { /* Style for tooltips */
+            position: absolute;
+            text-align: center;
+            padding: 4px;
+            font: 12px sans-serif;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            pointer-events: none; /* So the tooltip doesn't block mouse events */
+            opacity: 0; /* Initially hidden */
+            transition: opacity 0.2s ease-in-out; /* Smooth appearance */
+        }
+    </style>
+</head>
+<body>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
