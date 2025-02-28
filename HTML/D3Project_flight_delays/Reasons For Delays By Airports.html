@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Airline Delay Dashboard</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      width: 120px;
+      height: auto;
+      padding: 5px;
+      background: lightgrey;
+      border: 1px solid black;
+      border-radius: 5px;
+      pointer-events: none;
+    }
+    .filter {
+      margin: 10px 0;
+    }
+    .legend {
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+      fill: black;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reasons For Delays By Airports</h1>
+  
+  <!-- Filter Dropdown -->
+  <div class="filter">
+    <label for="airport-select">Filter by Airport:</label>
+    <select id="airport-select">
+      <option value="all">All Airports</option>
+    </select>
+  </div>
+  
+  <!-- SVG Container for Pie Chart -->
+  <svg id="pie-chart" width="600" height="600"></svg>
+  
+  <!-- Legend -->
+  <div id="legend" class="legend"></div>
+  
+  <script>
+    d3.csv("Airline_Delay_Cause.csv").then(data => {
+      data.forEach(d => {
+        d.arr_delay = +d.arr_delay;
+        d.carrier_delay = +d.carrier_delay;
+        d.weather_delay = +d.weather_delay;
+        d.nas_delay = +d.nas_delay;
+        d.security_delay = +d.security_delay;
+      });
+
+      const airports = [...new Set(data.map(d => d.airport_name))];
+      const select = d3.select("#airport-select");
+      airports.forEach(airport => {
+        select.append("option").attr("value", airport).text(airport);
+      });
+
+      function updateChart(selectedAirport) {
+        let filteredData = selectedAirport === "all" ? data : data.filter(d => d.airport_name === selectedAirport);
+        
+        let totalDelays = {
+          "Carrier Delay": d3.sum(filteredData, d => d.carrier_delay),
+          "Weather Delay": d3.sum(filteredData, d => d.weather_delay),
+          "NAS Delay": d3.sum(filteredData, d => d.nas_delay),
+          "Security Delay": d3.sum(filteredData, d => d.security_delay)
+        };
+        
+        let total = Object.values(totalDelays).reduce((a, b) => a + b, 0);
+        let pieData = Object.entries(totalDelays).map(([key, value]) => ({ label: key, value, percentage: ((value / total) * 100).toFixed(1) }));
+
+        const width = 600, height = 600, radius = Math.min(width, height) / 2;
+        const color = d3.scaleOrdinal(["#FFD700", "#98FB98", "#87CEFA", "#FFB6C1"]);
+        
+        const svg = d3.select("#pie-chart").attr("width", width).attr("height", height);
+        svg.selectAll("*").remove();
+        
+        const g = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
+        
+        const pie = d3.pie().value(d => d.value);
+        const arc = d3.arc().innerRadius(0).outerRadius(radius);
+        
+        const arcs = g.selectAll(".arc")
+          .data(pie(pieData))
+          .enter().append("g");
+        
+        arcs.append("path")
+          .attr("class", "arc")
+          .attr("d", arc)
+          .attr("fill", d => color(d.data.label))
+          .transition()
+          .duration(1000)
+          .attrTween("d", function(d) {
+            let i = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+            return function(t) {
+              return arc(i(t));
+            };
+          });
+        
+        const legend = d3.select("#legend");
+        legend.html("");
+        pieData.forEach(d => {
+          legend.append("div")
+            .attr("class", "legend-item")
+            .html(`<div class="legend-color" style="background: ${color(d.label)};"></div>${d.label}: ${d.percentage}%`);
+        });
+      }
+      
+      updateChart("all");
+      d3.select("#airport-select").on("change", function() {
+        updateChart(this.value);
+      });
+    });
+  </script>
+</body>
+</html>

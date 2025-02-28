@@ -22,11 +22,15 @@
     .bar {
       fill: steelblue;
     }
-    .bar:hover {
+    .delay-bar {
       fill: orange;
     }
     .axis-label {
       font-size: 16px;
+      font-weight: bold;
+    }
+    .legend {
+      font-size: 14px;
       font-weight: bold;
     }
   </style>
@@ -47,6 +51,16 @@
   
   <!-- Tooltip -->
   <div class="tooltip" style="opacity: 0;"></div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <svg width="100" height="50">
+      <rect x="0" y="0" width="20" height="20" fill="steelblue"></rect>
+      <text x="30" y="15">Flights</text>
+      <rect x="0" y="30" width="20" height="20" fill="orange"></rect>
+      <text x="30" y="45">Delays</text>
+    </svg>
+  </div>
   
   <script>
     // Load the dataset
@@ -99,7 +113,7 @@
         .attr("y", -margin.left + 20)
         .attr("transform", "rotate(-90)")
         .style("text-anchor", "middle")
-        .text("Number of Delays");
+        .text("Number of Flights and Delays");
 
       // Tooltip
       const tooltip = d3.select(".tooltip");
@@ -107,7 +121,7 @@
       // Function to update bar chart
       function updateBarChart(data) {
         xBar.domain(data.map(d => d.carrier_name));
-        yBar.domain([0, d3.max(data, d => d.arr_del15)]);
+        yBar.domain([0, d3.max(data, d => d.arr_flights)]);
 
         xAxisBar.call(d3.axisBottom(xBar))
           .selectAll("text")
@@ -121,13 +135,40 @@
         const bars = gBar.selectAll(".bar")
           .data(data, d => d.carrier_name);
 
+        const delayBars = gBar.selectAll(".delay-bar")
+          .data(data, d => d.carrier_name);
+
         bars.exit().remove();
+        delayBars.exit().remove();
 
         bars.enter().append("rect")
           .attr("class", "bar")
           .attr("x", d => xBar(d.carrier_name))
+          .attr("y", d => yBar(d.arr_flights))
+          .attr("width", xBar.bandwidth() / 2)  // Half width for flights
+          .attr("height", d => height - yBar(d.arr_flights))
+          .on("mouseover", (event, d) => {
+            tooltip.style("opacity", 1)
+              .html(`
+                Airline: ${d.carrier_name}<br>
+                Airport: ${d.airport_name}<br>
+                Flights: ${d.arr_flights}<br>
+                Delays: ${d.arr_del15}<br>
+                Carrier Delay: ${d.carrier_delay}<br>
+                Weather Delay: ${d.weather_delay}<br>
+                NAS Delay: ${d.nas_delay}<br>
+                Late Aircraft Delay: ${d.late_aircraft_delay}
+              `)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 28) + "px");
+          })
+          .on("mouseout", () => tooltip.style("opacity", 0));
+
+        delayBars.enter().append("rect")
+          .attr("class", "delay-bar")
+          .attr("x", d => xBar(d.carrier_name) + xBar.bandwidth() / 2)  // Half width for delays, positioned next to flights
           .attr("y", d => yBar(d.arr_del15))
-          .attr("width", xBar.bandwidth())
+          .attr("width", xBar.bandwidth() / 2)  // Half width for delays
           .attr("height", d => height - yBar(d.arr_del15))
           .on("mouseover", (event, d) => {
             tooltip.style("opacity", 1)
@@ -147,8 +188,13 @@
           .on("mouseout", () => tooltip.style("opacity", 0));
 
         bars.attr("x", d => xBar(d.carrier_name))
+          .attr("y", d => yBar(d.arr_flights))
+          .attr("width", xBar.bandwidth() / 2)
+          .attr("height", d => height - yBar(d.arr_flights));
+
+        delayBars.attr("x", d => xBar(d.carrier_name) + xBar.bandwidth() / 2)
           .attr("y", d => yBar(d.arr_del15))
-          .attr("width", xBar.bandwidth())
+          .attr("width", xBar.bandwidth() / 2)
           .attr("height", d => height - yBar(d.arr_del15));
       }
 
