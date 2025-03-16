@@ -5,6 +5,13 @@
   <title>Airline Delay Dashboard</title>
   <script src="https://d3js.org/d3.v6.min.js"></script>
   <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
     .tooltip {
       position: absolute;
       text-align: center;
@@ -45,13 +52,13 @@
   </style>
 </head>
 <body>
-  <h1>Reasons For Delays By Airports</h1>
+  <h1>Reasons For Delays By Airlines</h1>
   
   <!-- Filter Dropdown -->
   <div class="filter">
-    <label for="airport-select">Filter by Airport:</label>
+    <label for="airport-select">Filter by Airlines:</label>
     <select id="airport-select">
-      <option value="all">All Airports</option>
+      <option value="all">All Airlines</option>
     </select>
   </div>
   
@@ -71,14 +78,14 @@
         d.security_delay = +d.security_delay;
       });
 
-      const airports = [...new Set(data.map(d => d.airport_name))];
+      const airlines = [...new Set(data.map(d => d.carrier_name))];
       const select = d3.select("#airport-select");
-      airports.forEach(airport => {
-        select.append("option").attr("value", airport).text(airport);
+      airlines.forEach(airline => {
+        select.append("option").attr("value", airline).text(airline);
       });
 
-      function updateChart(selectedAirport) {
-        let filteredData = selectedAirport === "all" ? data : data.filter(d => d.airport_name === selectedAirport);
+      function updateChart(selectedAirline) {
+        let filteredData = selectedAirline === "all" ? data : data.filter(d => d.carrier_name === selectedAirline);
         
         let totalDelays = {
           "Carrier Delay": d3.sum(filteredData, d => d.carrier_delay),

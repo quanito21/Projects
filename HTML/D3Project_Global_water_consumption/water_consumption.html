@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Use Pie Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chart-container {
+            display: flex;
+            align-items: center;
+        }
+        .legend {
+            margin-left: 20px;
+            font-size: 14px;
+        }
+        .legend div {
+            margin-bottom: 5px;
+        }
+        .tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Water Usage Distribution</h2>
+    <label for="countrySelect">Select Country:</label>
+    <select id="countrySelect"></select>
+    <label for="yearRange">Select Year:</label>
+    <input type="range" id="yearRange" min="2000" max="2024" step="1" value="2024">
+    <span id="yearLabel">2024</span>
+    <div class="chart-container">
+        <svg width="500" height="500"></svg>
+        <div class="legend"></div>
+    </div>
+    <script>
+        d3.csv("global_water_consumption.csv").then(data => {
+            data.forEach(d => {
+                d.year = +d.Year;
+                d.agriculture = +d["Agricultural Water Use (%)"];
+                d.industry = +d["Industrial Water Use (%)"];
+                d.household = +d["Household Water Use (%)"];
+            });
+
+            const svg = d3.select("svg"),
+                  width = +svg.attr("width"),
+                  height = +svg.attr("height"),
+                  radius = Math.min(width, height) / 2 - 20;
+
+            const g = svg.append("g").attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+            const color = d3.scaleOrdinal(["#1f77b4", "#ff7f0e", "#2ca02c"]);
+
+            const pie = d3.pie().value(d => d.value);
+            const arc = d3.arc().innerRadius(0).outerRadius(radius);
+
+            function updateChart(selectedCountry, selectedYear) {
+                const filteredData = data.find(d => d.Country === selectedCountry && d.year == selectedYear);
+                if (!filteredData) return;
+
+                const dataset = [
+                    { category: "Agriculture", value: filteredData.agriculture },
+                    { category: "Industry", value: filteredData.industry },
+                    { category: "Household", value: filteredData.household }
+                ];
+
+                const arcs = g.selectAll(".arc").data(pie(dataset));
+
+                arcs.enter()
+                    .append("path")
+                    .attr("class", "arc")
+                    .merge(arcs)
+                    .attr("fill", (d, i) => color(i))
+                    .attr("d", arc);
+
+                arcs.exit().remove();
+
+                const legend = d3.select(".legend").html("");
+                dataset.forEach((d, i) => {
+                    legend.append("div")
+                        .style("color", color(i))
+                        .html(`<strong>${d.category}:</strong> ${d.value}%`);
+                });
+            }
+
+            const countries = [...new Set(data.map(d => d.Country))];
+            d3.select("#countrySelect")
+              .selectAll("option")
+              .data(countries)
+              .enter().append("option")
+              .text(d => d);
+
+            d3.select("#countrySelect")
+              .on("change", function() {
+                  updateChart(this.value, +d3.select("#yearRange").property("value"));
+              });
+
+            d3.select("#yearRange")
+              .on("input", function() {
+                  d3.select("#yearLabel").text(this.value);
+                  updateChart(d3.select("#countrySelect").property("value"), +this.value);
+              });
+
+            updateChart(countries[0], 2024);
+        });
+    </script>
+</body>
+</html>
