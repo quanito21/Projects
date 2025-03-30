@@ -90,7 +90,7 @@
         let totalDelays = {
           "Carrier Delay": d3.sum(filteredData, d => d.carrier_delay),
           "Weather Delay": d3.sum(filteredData, d => d.weather_delay),
-          "NAS Delay": d3.sum(filteredData, d => d.nas_delay),
+          "National Airspace System Delay": d3.sum(filteredData, d => d.nas_delay),
           "Security Delay": d3.sum(filteredData, d => d.security_delay)
         };
         
