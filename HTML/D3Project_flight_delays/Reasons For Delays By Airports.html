@@ -54,11 +54,19 @@
 <body>
   <h1>Reasons For Delays By Airlines</h1>
   
-  <!-- Filter Dropdown -->
+  <!-- Filter Dropdowns -->
   <div class="filter">
     <label for="airport-select">Filter by Airlines:</label>
     <select id="airport-select">
       <option value="all">All Airlines</option>
+    </select>
+    <label for="year-select">Filter by Year:</label>
+    <select id="year-select">
+      <option value="all">All Years</option>
+    </select>
+    <label for="month-select">Filter by Month:</label>
+    <select id="month-select">
+      <option value="all">All Months</option>
     </select>
   </div>
   
@@ -76,42 +84,68 @@
         d.weather_delay = +d.weather_delay;
         d.nas_delay = +d.nas_delay;
         d.security_delay = +d.security_delay;
+        d.year = +d.year; // Ensure year is numeric
+        d.month = +d.month; // Ensure month is numeric
       });
 
       const airlines = [...new Set(data.map(d => d.carrier_name))];
-      const select = d3.select("#airport-select");
+      const years = [...new Set(data.map(d => d.year))];
+      const months = [...new Set(data.map(d => d.month))].sort((a, b) => a - b); // Sort months numerically
+
+      const airlineSelect = d3.select("#airport-select");
+      const yearSelect = d3.select("#year-select");
+      const monthSelect = d3.select("#month-select");
+
       airlines.forEach(airline => {
-        select.append("option").attr("value", airline).text(airline);
+        airlineSelect.append("option").attr("value", airline).text(airline);
+      });
+      
+      years.forEach(year => {
+        yearSelect.append("option").attr("value", year).text(year);
       });
 
-      function updateChart(selectedAirline) {
-        let filteredData = selectedAirline === "all" ? data : data.filter(d => d.carrier_name === selectedAirline);
-        
+      months.forEach(month => {
+        monthSelect.append("option").attr("value", month).text(month);
+      });
+
+      function updateChart(selectedAirline, selectedYear, selectedMonth) {
+        let filteredData = data;
+
+        if (selectedAirline !== "all") {
+          filteredData = filteredData.filter(d => d.carrier_name === selectedAirline);
+        }
+        if (selectedYear !== "all") {
+          filteredData = filteredData.filter(d => d.year === +selectedYear);
+        }
+        if (selectedMonth !== "all") {
+          filteredData = filteredData.filter(d => d.month === +selectedMonth);
+        }
+
         let totalDelays = {
           "Carrier Delay": d3.sum(filteredData, d => d.carrier_delay),
           "Weather Delay": d3.sum(filteredData, d => d.weather_delay),
           "National Airspace System Delay": d3.sum(filteredData, d => d.nas_delay),
           "Security Delay": d3.sum(filteredData, d => d.security_delay)
         };
-        
+
         let total = Object.values(totalDelays).reduce((a, b) => a + b, 0);
         let pieData = Object.entries(totalDelays).map(([key, value]) => ({ label: key, value, percentage: ((value / total) * 100).toFixed(1) }));
 
         const width = 600, height = 600, radius = Math.min(width, height) / 2;
         const color = d3.scaleOrdinal(["#FFD700", "#98FB98", "#87CEFA", "#FFB6C1"]);
-        
+
         const svg = d3.select("#pie-chart").attr("width", width).attr("height", height);
         svg.selectAll("*").remove();
-        
+
         const g = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
-        
+
         const pie = d3.pie().value(d => d.value);
         const arc = d3.arc().innerRadius(0).outerRadius(radius);
-        
+
         const arcs = g.selectAll(".arc")
           .data(pie(pieData))
           .enter().append("g");
-        
+
         arcs.append("path")
           .attr("class", "arc")
           .attr("d", arc)
@@ -124,7 +158,7 @@
               return arc(i(t));
             };
           });
-        
+
         const legend = d3.select("#legend");
         legend.html("");
         pieData.forEach(d => {
@@ -133,10 +167,19 @@
             .html(`<div class="legend-color" style="background: ${color(d.label)};"></div>${d.label}: ${d.percentage}%`);
         });
       }
-      
-      updateChart("all");
-      d3.select("#airport-select").on("change", function() {
-        updateChart(this.value);
+
+      updateChart("all", "all", "all");
+
+      airlineSelect.on("change", function() {
+        updateChart(this.value, yearSelect.node().value, monthSelect.node().value);
+      });
+
+      yearSelect.on("change", function() {
+        updateChart(airlineSelect.node().value, this.value, monthSelect.node().value);
+      });
+
+      monthSelect.on("change", function() {
+        updateChart(airlineSelect.node().value, yearSelect.node().value, this.value);
       });
     });
   </script>

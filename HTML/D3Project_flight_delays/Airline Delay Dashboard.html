@@ -37,18 +37,26 @@
 </head>
 <body>
   <h1>Airline Delay Dashboard</h1>
-  
-  <!-- Filter Dropdown -->
+
+  <!-- Filter Dropdowns -->
   <div class="filter">
     <label for="airport-select">Filter by Airport:</label>
     <select id="airport-select">
       <option value="all">All Airports</option>
     </select>
+    <label for="year-select">Filter by Year:</label>
+    <select id="year-select">
+      <option value="all">All Years</option>
+    </select>
+    <label for="month-select">Filter by Month:</label>
+    <select id="month-select">
+      <option value="all">All Months</option>
+    </select>
   </div>
-  
+
   <!-- SVG Containers for Visualizations -->
   <svg id="bar-chart" width="1500" height="600"></svg>
-  
+
   <!-- Tooltip -->
   <div class="tooltip" style="opacity: 0;"></div>
 
@@ -61,11 +69,9 @@
       <text x="30" y="45">Delays</text>
     </svg>
   </div>
-  
-  <script>
-    // Load the dataset
-    d3.csv("Airline_Delay_Cause.csv").then(data => {
 
+  <script>
+    d3.csv("Airline_Delay_Cause.csv").then(data => {
       // Parse data and cast to appropriate types
       data.forEach(d => {
         d.arr_flights = +d.arr_flights;
@@ -74,14 +80,30 @@
         d.weather_delay = +d.weather_delay;
         d.nas_delay = +d.nas_delay;
         d.late_aircraft_delay = +d.late_aircraft_delay;
-        d.carrier_name = d.carrier_name.split(" ")[0];  // Use only the first word of carrier_name
+        d.carrier_name = d.carrier_name.split(" ")[0]; // Use only the first word of carrier_name
+        d.year = +d.year; // Assuming 'year' is present in the data
+        d.month = +d.month; // Assuming 'month' is present in the data and numeric
       });
 
-      // Populate airport filter dropdown
+      // Populate filters
       const airports = [...new Set(data.map(d => d.airport_name))];
-      const select = d3.select("#airport-select");
+      const years = [...new Set(data.map(d => d.year))];
+      const months = [...new Set(data.map(d => d.month))].sort((a, b) => a - b); // Sort months numerically
+
+      const airportSelect = d3.select("#airport-select");
+      const yearSelect = d3.select("#year-select");
+      const monthSelect = d3.select("#month-select");
+
       airports.forEach(airport => {
-        select.append("option").attr("value", airport).text(airport);
+        airportSelect.append("option").attr("value", airport).text(airport);
+      });
+
+      years.forEach(year => {
+        yearSelect.append("option").attr("value", year).text(year);
+      });
+
+      months.forEach(month => {
+        monthSelect.append("option").attr("value", month).text(month);
       });
 
       // Initial visualization setup
@@ -99,26 +121,10 @@
       const xAxisBar = gBar.append("g").attr("transform", `translate(0,${height})`);
       const yAxisBar = gBar.append("g");
 
-      // Add x and y axis labels
-      gBar.append("text")
-        .attr("class", "axis-label")
-        .attr("x", width / 2)
-        .attr("y", height + margin.bottom - 40)
-        .style("text-anchor", "middle")
-        .text("Airline");
-
-      gBar.append("text")
-        .attr("class", "axis-label")
-        .attr("x", -height / 2)
-        .attr("y", -margin.left + 20)
-        .attr("transform", "rotate(-90)")
-        .style("text-anchor", "middle")
-        .text("Number of Flights and Delays");
-
       // Tooltip
       const tooltip = d3.select(".tooltip");
 
-      // Function to update bar chart
+      // Update bar chart function
       function updateBarChart(data) {
         xBar.domain(data.map(d => d.carrier_name));
         yBar.domain([0, d3.max(data, d => d.arr_flights)]);
@@ -132,20 +138,18 @@
 
         yAxisBar.call(d3.axisLeft(yBar));
 
-        const bars = gBar.selectAll(".bar")
-          .data(data, d => d.carrier_name);
-
-        const delayBars = gBar.selectAll(".delay-bar")
-          .data(data, d => d.carrier_name);
+        const bars = gBar.selectAll(".bar").data(data, d => d.carrier_name);
+        const delayBars = gBar.selectAll(".delay-bar").data(data, d => d.carrier_name);
 
         bars.exit().remove();
         delayBars.exit().remove();
 
         bars.enter().append("rect")
           .attr("class", "bar")
+          .merge(bars)
           .attr("x", d => xBar(d.carrier_name))
           .attr("y", d => yBar(d.arr_flights))
-          .attr("width", xBar.bandwidth() / 2)  // Half width for flights
+          .attr("width", xBar.bandwidth() / 2)
           .attr("height", d => height - yBar(d.arr_flights))
           .on("mouseover", (event, d) => {
             tooltip.style("opacity", 1)
@@ -154,10 +158,6 @@
                 Airport: ${d.airport_name}<br>
                 Flights: ${d.arr_flights}<br>
                 Delays: ${d.arr_del15}<br>
-                Carrier Delay: ${d.carrier_delay}<br>
-                Weather Delay: ${d.weather_delay}<br>
-                NAS Delay: ${d.nas_delay}<br>
-                Late Aircraft Delay: ${d.late_aircraft_delay}
               `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 28) + "px");
@@ -166,9 +166,10 @@
 
         delayBars.enter().append("rect")
           .attr("class", "delay-bar")
-          .attr("x", d => xBar(d.carrier_name) + xBar.bandwidth() / 2)  // Half width for delays, positioned next to flights
+          .merge(delayBars)
+          .attr("x", d => xBar(d.carrier_name) + xBar.bandwidth() / 2)
           .attr("y", d => yBar(d.arr_del15))
-          .attr("width", xBar.bandwidth() / 2)  // Half width for delays
+          .attr("width", xBar.bandwidth() / 2)
           .attr("height", d => height - yBar(d.arr_del15))
           .on("mouseover", (event, d) => {
             tooltip.style("opacity", 1)
@@ -177,40 +178,40 @@
                 Airport: ${d.airport_name}<br>
                 Flights: ${d.arr_flights}<br>
                 Delays: ${d.arr_del15}<br>
-                Carrier Delay: ${d.carrier_delay}<br>
-                Weather Delay: ${d.weather_delay}<br>
-                NAS Delay: ${d.nas_delay}<br>
-                Late Aircraft Delay: ${d.late_aircraft_delay}
               `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 28) + "px");
           })
           .on("mouseout", () => tooltip.style("opacity", 0));
-
-        bars.attr("x", d => xBar(d.carrier_name))
-          .attr("y", d => yBar(d.arr_flights))
-          .attr("width", xBar.bandwidth() / 2)
-          .attr("height", d => height - yBar(d.arr_flights));
-
-        delayBars.attr("x", d => xBar(d.carrier_name) + xBar.bandwidth() / 2)
-          .attr("y", d => yBar(d.arr_del15))
-          .attr("width", xBar.bandwidth() / 2)
-          .attr("height", d => height - yBar(d.arr_del15));
       }
 
-      // Initial rendering of bar chart
-      updateBarChart(data);
-
-      // Update function for filtering data
+      // Filter and update data
       function updateData() {
-        const selectedAirport = select.property("value");
-        const filteredData = selectedAirport === "all" ? data : data.filter(d => d.airport_name === selectedAirport);
+        const selectedAirport = airportSelect.property("value");
+        const selectedYear = yearSelect.property("value");
+        const selectedMonth = monthSelect.property("value");
+
+        let filteredData = data;
+        if (selectedAirport !== "all") {
+          filteredData = filteredData.filter(d => d.airport_name === selectedAirport);
+        }
+        if (selectedYear !== "all") {
+          filteredData = filteredData.filter(d => d.year === +selectedYear);
+        }
+        if (selectedMonth !== "all") {
+          filteredData = filteredData.filter(d => d.month === +selectedMonth);
+        }
+
         updateBarChart(filteredData);
       }
 
-      // Event listener for dropdown change
-      select.on("change", updateData);
+      // Event listeners
+      airportSelect.on("change", updateData);
+      yearSelect.on("change", updateData);
+      monthSelect.on("change", updateData);
 
+      // Initial chart
+      updateData();
     });
   </script>
 </body>
